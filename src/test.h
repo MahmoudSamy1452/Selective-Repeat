@@ -26,7 +26,6 @@ using namespace omnetpp;
  */
 class Test : public cSimpleModule
 {
-    MyMessage_Base * storedMsg;
   protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
