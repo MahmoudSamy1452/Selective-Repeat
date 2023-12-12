@@ -10,19 +10,11 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-<<<<<<< HEAD
             "windowsSdkVersion": "10.0.22000.0",
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-msvc-x64",
             "compilerPath": "C:/msys64/mingw64/bin/g++.exe"
-=======
-            "compilerPath": "C:/mingw64/bin/g++.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64",
-            "configurationProvider": "ms-vscode.makefile-tools"
->>>>>>> e92a73833a92186f85451111b0f5f8ae8c3fa87c
         }
     ],
     "version": 4
