@@ -11,21 +11,26 @@ network Network
 {
     parameters:
         double PT;
-    	double TD;
+        double TD;
         double ED;
         double DD;
         int WS;
         int WR;
         double TO;
     submodules:
-        sender: Test {
+        Node0: Test {
             @display("p=77,88");
         }
-        receiver: Test {
+        Node1: Test {
             @display("p=169,88");
         }
+        coordinator: Coordinator {
+            @display("p=116,198");
+        }
     connections:
-        sender.out --> receiver.in;
-        receiver.out --> sender.in;
+        Node0.out --> Node1.in;
+        Node1.out --> Node0.in;
+        coordinator.out1 --> Node1.inCor;
+        coordinator.out0 --> Node0.inCor;
 }
 

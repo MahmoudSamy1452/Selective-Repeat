@@ -12,18 +12,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
-
 package networks_project;
-
 //
 // TODO auto-generated module
 //
-simple Test
+simple Coordinator
 {
-
+    
     gates:
-        input in;
-        input inCor;
-        output out;
-     
+        output out0;
+        output out1;
 }

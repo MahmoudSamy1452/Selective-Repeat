@@ -27,7 +27,7 @@ using namespace omnetpp;
 class Test : public cSimpleModule
 {
   protected:
-    void sendFrame(int frameKind, int frame_nr, bool resend = false);
+    void sendFrame(int frameKind, int frame_nr, bool resend = false, int n = 1);
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
 };
