@@ -24,7 +24,8 @@ std::vector<std::string> in_buff;       //size is retrieved as parameter from om
 std::vector<std::pair<std::string, std::string>> out_buff;      //size is retrieved as parameter from omnetpp.ini
 std::vector<MyMessage_Base *> time_out;                               //store messages to cancel them if ack is received
 std::vector<bool> arrival;
-std::queue<std::pair<std::string,std::string>> networkLayer;
+std::queue<std::pair<std::string,std::string>> senderNetworkLayer;
+std::queue<std::pair<std::string,std::string>> receiverNetworkLayer;
 int WS, WR, max_seq_s, max_seq_r;                               //retrieved as parameter from omnetpp.ini (ws)
 int ack_expected, next_frame_to_send;
 int frame_expected, too_far;
@@ -44,6 +45,7 @@ vector<int> sequenceArrivedSender(3);*/
 
 void readFile(std::string file_name)
 {
+    EV << file_name << endl;
     std::ifstream inputFile(file_name);
     std::vector<std::string> textInput;
 
@@ -58,10 +60,9 @@ void readFile(std::string file_name)
     {
         char number[4];
         char restOfString[256];
-
         if (std::sscanf(line.c_str(), "%s %255[^\n]", &number, restOfString) == 2)
         {
-            networkLayer.push(std::make_pair(number, std::string(restOfString)));
+            senderNetworkLayer.push(std::make_pair(number, std::string(restOfString)));
         }
     }
     inputFile.close();
@@ -81,6 +82,22 @@ void circularSum (int& value, int size)
 {
     value = (value + 1) % size;
 }
+
+// void printNetwork()
+// {
+//     int size = networkLayer.size();
+//     EV << "NETWORK LAYER:";
+//     while(size--)
+//     {
+//         std::pair<std::string, std::string> temp = networkLayer.front();
+//         networkLayer.pop();
+//         EV << temp.first << " " << temp.second << endl;
+//         networkLayer.push(temp);
+//     }
+//     EV << endl;
+//     EV << "Finished printing network layer";
+//     EV << endl;
+// }
 
 std::string byteStuffing(std::string message)
 {
@@ -131,12 +148,16 @@ char calcCheckSum(std::string message)
 
 void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)      //0 is data, 1 is ack, 2 is nack
 {
-    
+    for(int i = 0; i < out_buff.size(); i++)
+    {
+        EV << "out_buff[" << i << "]: " << out_buff[i].second << endl;
+    }
+    // printNetwork();
     if(frameKind == DATA)// data, only sender will enter here 
     {
         //data
-        std::string initalString = out_buff[frame_nr].second;
-        std::string errors = out_buff[frame_nr].first;
+        std::string initalString = out_buff[frame_nr % WS].second;
+        std::string errors = out_buff[frame_nr % WS].first;
 
         char checkSum = calcCheckSum(initalString);
         EV << "checksum is: "<<checkSum<<endl;
@@ -199,14 +220,16 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)      //0 i
         MyMessage_Base * msg = new MyMessage_Base("message");
         msg->setM_Payload("ack");
         msg->setM_Type(frameKind);
+        msg->setSeq_Num(frame_nr);
         send(msg, "out");
     }
     else if(frameKind == NACK)
     {
         //nack
         MyMessage_Base * msg = new MyMessage_Base("message");
-        msg->setM_Type(frameKind);
         msg->setM_Payload("nack");
+        msg->setM_Type(frameKind);
+        msg->setSeq_Num(frame_nr);
         send(msg, "out");
         // no_nak = false;
     }
@@ -224,9 +247,9 @@ void Test::initialize()
     TO = getParentModule()->par("TO");
     max_seq_s = (WS * 2);       //max sequence number for sender
     max_seq_r = (WR * 2);       //max sequence number for receiver
-    in_buff.resize(max_seq_r);
-    out_buff.resize(max_seq_s);
+    in_buff.resize(WR);
     arrival.resize(WR);
+    out_buff.resize(WS);
     ack_expected = 0;
     next_frame_to_send = 0;
     frame_expected = 0;
@@ -243,29 +266,25 @@ void Test::handleMessage(cMessage* dummy)
     if (strcmp(msg->getName(), getName()) == 0)
     {
         // El Mafrood hena t read el file 3ala 7asab law ana input0 aw input1
-        readFile("input.txt");     //Input0 aw 1 3ala 7asab
+        readFile("input"+std::to_string((msg->getName())[4]-'0')+".txt");     //Input0 aw 1 3ala 7asab
 
-        time_out.resize(networkLayer.size());
+        time_out.resize(senderNetworkLayer.size());
         for(int i = 0; i < max_seq_s; i++)
         {
             time_out[i] = new MyMessage_Base("timeout");
             time_out[i]->setSeq_Num(i);
         }
         // Emla el buffer bta3 el sender
-        for (int i = 0; networkLayer.size() && i < max_seq_s; i++)
+        for (int i = 0; senderNetworkLayer.size() && i < WS; i++)
         {
-            std::pair<std::string, std::string> temp = networkLayer.front();
-            networkLayer.pop();
+            std::pair<std::string, std::string> temp = senderNetworkLayer.front();
+            senderNetworkLayer.pop();
             out_buff[i] = temp;
-            nbuffered++;
-        }
-        EV << "b3d kol zeft" << endl;
-        // Since the network layer is initially empty, send all the frames in the window
-        for (int i = 0; i < WS; i++)
-        {
             sendFrame(DATA, next_frame_to_send, false, i + 1);
             circularSum(next_frame_to_send, max_seq_s);
+            nbuffered++;
         }
+        // Since the network layer is initially empty, send all the frames in the window
     }
     else if (strcmp(msg->getName(), "send") == 0) // Sender sending a message to itself for introducing delays
     {
@@ -310,27 +329,30 @@ void Test::handleMessage(cMessage* dummy)
 
             while(arrival[frame_expected % WR])
             {
-                networkLayer.push(std::make_pair("", in_buff[frame_expected % WR]));
+                EV << "network layer size: " << receiverNetworkLayer.size() << endl;
+                receiverNetworkLayer.push(std::make_pair("", in_buff[frame_expected % WR]));
                 arrival[frame_expected % WR] = false;
                 // no_nak = true;
                 EV << "message " << frame_expected << " passed to network layer" << endl;
-                sendFrame(ACK, frame_expected);
                 circularSum(frame_expected, max_seq_r);
+                sendFrame(ACK, frame_expected);
                 circularSum(too_far, max_seq_r);  
             }
         }
         else if (msg->getM_Type() == ACK)
         {
-            cancelEvent(time_out[msg->getSeq_Num()]);
+            EV << "timer cancelled with seq_num = " << (msg->getSeq_Num() + max_seq_s) % (max_seq_s + 1) << endl;
+            cancelEvent(time_out[(msg->getSeq_Num() + max_seq_s) % (max_seq_s + 1)]);
             nbuffered--;
-            if(!networkLayer.empty())
+            EV << "network layer size: " << senderNetworkLayer.size() << endl;
+            if(!senderNetworkLayer.empty())
             {
-                std::pair<std::string, std::string> temp = networkLayer.front();
-                networkLayer.pop();
-                out_buff[ack_expected] = temp;
+                std::pair<std::string, std::string> temp = senderNetworkLayer.front();
+                senderNetworkLayer.pop();
+                out_buff[ack_expected] = temp; // next_frame_to_send % WS
                 nbuffered++;
                 EV << "ACK RECEIVED" << endl;
-                EV << next_frame_to_send << endl;
+                EV << "next_frame_to_send: " << next_frame_to_send << endl;
                 sendFrame(DATA, next_frame_to_send);
             }
             if(nbuffered)
