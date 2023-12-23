@@ -3,15 +3,15 @@
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
+//
 
 #include "Coordinator.h"
 #include <fstream>
@@ -45,7 +45,7 @@ void Coordinator::initialize()
 {
     // TODO - Generated method body
     readFile();
-    MyMessage_Base * msg = new MyMessage_Base(("Node" + std::to_string(node_id)).c_str());
+    MyMessage_Base *msg = new MyMessage_Base(("Node" + std::to_string(node_id)).c_str());
     scheduleAt(simTime() + start_time, msg);
 }
 
@@ -53,6 +53,8 @@ void Coordinator::handleMessage(cMessage *dummy)
 {
     // TODO - Generated method body
     MyMessage_Base *msg = check_and_cast<MyMessage_Base *>(dummy);
-    send(msg->dup(), "out0");
-    send(msg, "out1");
+    if (strcmp(msg->getName(), "Node0") == 0)
+        send(msg, "out0");
+    else
+        send(msg, "out1");
 }
