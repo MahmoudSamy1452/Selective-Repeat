@@ -1,5 +1,5 @@
 #
-# OMNeT++/OMNEST Makefile for Networks_Project
+# OMNeT++/OMNEST Makefile for Selective_Repeat
 #
 # This file was generated with the command:
 #  opp_makemake -f --deep
@@ -7,7 +7,7 @@
 
 # Name of target to be created (-o option)
 TARGET_DIR = .
-TARGET_NAME = Networks_Project$(D)
+TARGET_NAME = Selective_Repeat$(D)
 TARGET = $(TARGET_NAME)$(EXE_SUFFIX)
 TARGET_IMPLIB = $(TARGET_NAME)$(IMPLIB_SUFFIX)
 TARGET_IMPDEF = $(TARGET_NAME)$(IMPDEF_SUFFIX)
