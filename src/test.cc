@@ -136,6 +136,8 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
     {
         std::string initialString = out_buff[frame_nr % WS].second;
         std::string errors = out_buff[frame_nr % WS].first;
+        if (resend)
+            errors = "0000";
 
         char checkSum = calcCheckSum(initialString);
 
@@ -194,8 +196,8 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
     }
     else if (frameKind == ACK)
     {
-        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << ", loss No\n";
-        file << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << ", loss No\n";
+        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << endl;
+        file << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << endl;
         MyMessage_Base *msg = new MyMessage_Base("send");
         msg->setM_Payload("ack");
         msg->setM_Type(frameKind);
@@ -204,8 +206,8 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
     }
     else if (frameKind == NACK)
     {
-        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << ", loss No\n";
-        file << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << ", loss No\n";
+        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << endl;
+        file << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << endl;
         MyMessage_Base *msg = new MyMessage_Base("send");
         msg->setM_Payload("nack");
         msg->setM_Type(frameKind);
@@ -228,7 +230,7 @@ void Test::initialize()
     max_seq_s = (WS * 2);
     max_seq_r = (WR * 2);
     in_buff.resize(WR);
-    arrival.resize(WR);
+    arrival.resize(WR, 0);
     out_buff.resize(WS);
     ack_expected = 0;
     next_frame_to_send = 0;
@@ -282,7 +284,10 @@ void Test::handleMessage(cMessage *dummy)
             std::string stuffedPayload = msg->getM_Payload();
             std::string payload = byteDeStuffing(stuffedPayload);
             char receiverCheckSum = calcCheckSum(payload);
-
+            EV << "Frame_expected: " << frame_expected << " too_far: " << too_far << endl;
+            for (int i = frame_expected; i != too_far; circularSum(i, max_seq_r))
+                EV << arrival[i % WR] << " ";
+            EV << endl;
             EV << "At time " << simTime() << ", " << getName() << " received frame with seq_num = " << msg->getSeq_Num() << " and payload = " << msg->getM_Payload() << " and trailer = " << std::bitset<8>(msg->getMycheckbits()) << ", Modified " << ((receiverCheckSum == msg->getMycheckbits()) ? -1 : 1) << " Lost No, Duplicate " << (arrival[msg->getSeq_Num() % WR] ? 2 : 1) << ", Delay 0\n";
             file << "At time " << simTime() << ", " << getName() << " received frame with seq_num = " << msg->getSeq_Num() << " and payload = " << msg->getM_Payload() << " and trailer = " << std::bitset<8>(msg->getMycheckbits()) << ", Modified " << ((receiverCheckSum == msg->getMycheckbits()) ? -1 : 1) << " Lost No, Duplicate " << (arrival[msg->getSeq_Num() % WR] ? 2 : 1) << ", Delay 0\n";
             if (receiverCheckSum == msg->getMycheckbits())
@@ -318,6 +323,8 @@ void Test::handleMessage(cMessage *dummy)
         }
         else if (msg->getM_Type() == ACK)
         {
+            EV << "At time " << simTime() << ", " << getName() << " received Ack with number " << msg->getSeq_Num();
+            file << "At time " << simTime() << ", " << getName() << " received Ack with number " << msg->getSeq_Num();
             int count = 1;
             while (between(ack_expected, (msg->getSeq_Num() + max_seq_s) % (max_seq_s + 1), next_frame_to_send))
             {
@@ -336,6 +343,8 @@ void Test::handleMessage(cMessage *dummy)
         }
         else if (msg->getM_Type() == NACK)
         {
+            EV << "At time " << simTime() << ", " << getName() << " received Nack with number " << msg->getSeq_Num();
+            file << "At time " << simTime() << ", " << getName() << " received Nack with number " << msg->getSeq_Num();
             cancelEvent(time_out[msg->getSeq_Num() % WS]);
             sendFrame(DATA, msg->getSeq_Num(), true);
         }
