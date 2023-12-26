@@ -25,6 +25,7 @@ Define_Module(Test);
 #define NACK 2
 int WS, WR;
 double PT, DD, TD, ED, TO;
+std::ofstream file;
 
 // used at sender
 std::queue<std::pair<std::string, std::string>> senderNetworkLayer;
@@ -157,11 +158,14 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
         time_out[frame_nr % WS]->setSeq_Num(frame_nr);
 
         EV << "At time " << simTime() + (n - 1) * 0.5 << ", " << getName() << ", Introducing channel error with code = " << errors << " and msg = " << initialString << endl;
+        file << "At time " << simTime() + (n - 1) * 0.5 << ", " << getName() << ", Introducing channel error with code = " << errors << " and msg = " << initialString << endl;
         double totalDelay = PT * n;
         EV << "At time " << simTime() + totalDelay << ", " << getName() << " sent frame with seq_num = " << frame_nr << " and payload = " << message << " and trailer = " << std::bitset<8>(checkSum) << ", Modified " << ((index == -1) ? -1 : index * 8 + modificationBit + 1) << ", Lost " << ((errors[1] - '0') ? "Yes" : "No") << ", Duplicate " << errors[2] << ", Delay " << (errors[3] - '0' ? ED : 0) << "." << endl;
+        file << "At time " << simTime() + totalDelay << ", " << getName() << " sent frame with seq_num = " << frame_nr << " and payload = " << message << " and trailer = " << std::bitset<8>(checkSum) << ", Modified " << ((index == -1) ? -1 : index * 8 + modificationBit + 1) << ", Lost " << ((errors[1] - '0') ? "Yes" : "No") << ", Duplicate " << errors[2] << ", Delay " << (errors[3] - '0' ? ED : 0) << "." << endl;
         if (errors[2] == '1' && !resend)
         {
-            EV << "At time " << simTime() + totalDelay + DD << ", Node " << getName() << "sent frame with seq_num = " << frame_nr << " and payload = " << message << " and trailer = " << std::bitset<8>(checkSum) << ", Modified " << ((index == -1) ? -1 : index * 8 + modificationBit + 1) << ", Lost " << errors[1] << ", Duplicate " << 2 << ", Delay " << (errors[3] - '0' ? ED : 0) << "." << endl;
+            EV << "At time " << simTime() + totalDelay + DD << ", " << getName() << " sent frame with seq_num = " << frame_nr << " and payload = " << message << " and trailer = " << std::bitset<8>(checkSum) << ", Modified " << ((index == -1) ? -1 : index * 8 + modificationBit + 1) << ", Lost " << ((errors[1] - '0') ? "Yes" : "No") << ", Duplicate " << 2 << ", Delay " << (errors[3] - '0' ? ED : 0) << "." << endl;
+            file << "At time " << simTime() + totalDelay + DD << ", " << getName() << " sent frame with seq_num = " << frame_nr << " and payload = " << message << " and trailer = " << std::bitset<8>(checkSum) << ", Modified " << ((index == -1) ? -1 : index * 8 + modificationBit + 1) << ", Lost " << ((errors[1] - '0') ? "Yes" : "No") << ", Duplicate " << 2 << ", Delay " << (errors[3] - '0' ? ED : 0) << "." << endl;
         }
 
         scheduleAt(simTime() + TO + totalDelay, time_out[frame_nr % WS]);
@@ -190,7 +194,8 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
     }
     else if (frameKind == ACK)
     {
-        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << ", loss No";
+        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << ", loss No\n";
+        file << "At time " << simTime() + PT << ", " << getName() << " Sending Ack with number " << frame_nr << ", loss No\n";
         MyMessage_Base *msg = new MyMessage_Base("send");
         msg->setM_Payload("ack");
         msg->setM_Type(frameKind);
@@ -199,7 +204,8 @@ void Test::sendFrame(int frameKind, int frame_nr, bool resend, int n)
     }
     else if (frameKind == NACK)
     {
-        EV << "At time " << simTime() + PT << ", " << getName() << "Sending Nack with number " << frame_nr << ", loss No";
+        EV << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << ", loss No\n";
+        file << "At time " << simTime() + PT << ", " << getName() << " Sending Nack with number " << frame_nr << ", loss No\n";
         MyMessage_Base *msg = new MyMessage_Base("send");
         msg->setM_Payload("nack");
         msg->setM_Type(frameKind);
@@ -235,6 +241,16 @@ void Test::handleMessage(cMessage *dummy)
 {
     MyMessage_Base *msg = check_and_cast<MyMessage_Base *>(dummy);
 
+    std::cout << "attempting to open file\n";
+    file.open("output.txt", std::ios::app);
+    if (!file.is_open())
+    {
+        std::cout << "Did not open file!\n";
+        printf("Error in opening output.txt in %s", getName());
+        exit(-1);
+    }
+    std::cout << "File opened successfully!\n";
+
     if (strcmp(msg->getName(), getName()) == 0)
     {
         readFile("input" + std::to_string((msg->getName())[4] - '0') + ".txt");
@@ -267,8 +283,8 @@ void Test::handleMessage(cMessage *dummy)
             std::string payload = byteDeStuffing(stuffedPayload);
             char receiverCheckSum = calcCheckSum(payload);
 
-            EV << "At time " << simTime() << ", " << getName() << " received frame with seq_num = " << msg->getSeq_Num() << " and payload = " << msg->getM_Payload() << " and trailer = " << std::bitset<8>(msg->getMycheckbits()) << ", Modified " << ((receiverCheckSum == msg->getMycheckbits()) ? -1 : 1) << " Lost No, Duplicate " << (arrival[msg->getSeq_Num()] ? 2 : 1) << ", Delay 0\n";
-
+            EV << "At time " << simTime() << ", " << getName() << " received frame with seq_num = " << msg->getSeq_Num() << " and payload = " << msg->getM_Payload() << " and trailer = " << std::bitset<8>(msg->getMycheckbits()) << ", Modified " << ((receiverCheckSum == msg->getMycheckbits()) ? -1 : 1) << " Lost No, Duplicate " << (arrival[msg->getSeq_Num() % WR] ? 2 : 1) << ", Delay 0\n";
+            file << "At time " << simTime() << ", " << getName() << " received frame with seq_num = " << msg->getSeq_Num() << " and payload = " << msg->getM_Payload() << " and trailer = " << std::bitset<8>(msg->getMycheckbits()) << ", Modified " << ((receiverCheckSum == msg->getMycheckbits()) ? -1 : 1) << " Lost No, Duplicate " << (arrival[msg->getSeq_Num() % WR] ? 2 : 1) << ", Delay 0\n";
             if (receiverCheckSum == msg->getMycheckbits())
             {
                 if (msg->getSeq_Num() != frame_expected && no_nak)
@@ -326,7 +342,9 @@ void Test::handleMessage(cMessage *dummy)
     }
     else if (strcmp(msg->getName(), "timeout") == 0)
     {
-        EV << "Time out event at time " << simTime() << ", at " << getName() << " for frame with seq_num = " << msg->getSeq_Num();
+        EV << "Time out event at time " << simTime() << ", at " << getName() << " for frame with seq_num = " << msg->getSeq_Num() << endl;
+        file << "Time out event at time " << simTime() << ", at " << getName() << " for frame with seq_num = " << msg->getSeq_Num() << endl;
         sendFrame(DATA, msg->getSeq_Num(), true);
     }
+    file.close();
 }

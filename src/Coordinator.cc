@@ -52,6 +52,17 @@ void Coordinator::initialize()
 void Coordinator::handleMessage(cMessage *dummy)
 {
     // TODO - Generated method body
+    std::ofstream file;
+    std::cout << "attempting to open file\n";
+    file.open("output.txt", std::ios::out | std::ios::trunc);
+    if (!file.is_open())
+    {
+        std::cout << "Did not open file!\n";
+        printf("Error in opening output.txt in %s", getName());
+        exit(-1);
+    }
+    std::cout << "File opened successfully!\n";
+    file.close();
     MyMessage_Base *msg = check_and_cast<MyMessage_Base *>(dummy);
     if (strcmp(msg->getName(), "Node0") == 0)
         send(msg, "out0");
