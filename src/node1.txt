@@ -2,14 +2,12 @@
 0000 #bbbb#
 0000 ccc/c
 1000 mod
-0001 delay
-0000 cc
 0100 lost
-0110 duplost
 0000 cc
+0001 delay
+0110 duplost
 1010 dupmod
 0010 dup
-0011 dupdelay
 0100 lostA
 0100 lostB
 0100 lostC
